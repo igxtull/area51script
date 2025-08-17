@@ -1,13 +1,3 @@
---[[ 
-   BRUTAL SURVIVAL CHEAT FOR "SURVIVE AND KILL THE KILLERS IN AREA 51"
-   FEATURES: 
-   1. ESP for Killers (RED), Weapons (GREEN), Health Packs (BLUE)
-   2. Auto-Aim (nearest killer) with toggle (F key)
-   3. Speed Hack (Press V) and Noclip (Press B)
-   4. Auto-Pickup Weapons and Health
-   5. Godmode (Prevents death)
---]]
-
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local RunService = game:GetService("RunService")
