@@ -1,31 +1,110 @@
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
-local LocalPlayer = Players.LocalPlayer
-local Mouse = LocalPlayer:GetMouse()
+--[[ 
+   BRUTAL SURVIVAL CHEAT FOR "SURVIVE AND KILL THE KILLERS IN AREA 51"
+   FEATURES: 
+   1. ESP for Killers (RED), Weapons (GREEN), Health Packs (BLUE)
+   2. Auto-Aim (nearest killer) with toggle (F key)
+   3. Speed Hack (Press V) and Noclip (Press B)
+   4. Auto-Pickup Weapons and Health
+   5. Godmode (Prevents death)
+--]]
 
--- ESP Functions
-local function createESP(target)
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local RunService = game:GetService("RunService")
+local UIS = game:GetService("UserInputService")
+
+-- GODMODE: Prevents death
+LocalPlayer.CharacterAdded:Connect(function(char)
+    char:WaitForChild("Humanoid").Died:Connect(function()
+        char:BreakJoints()
+        wait(1)
+        char.Humanoid.Health = 100
+        char:FindFirstChild("Head"):ClearAllChildren() -- Remove death effects
+    end)
+end)
+
+-- ESP FUNCTION
+local function createESP(target, color, name)
     local esp = Instance.new("Highlight")
-    esp.Name = "ESP_" .. target.Name
-    esp.FillColor = Color3.new(1, 0, 0) -- Красный для врагов
-    esp.OutlineColor = Color3.new(1, 1, 1)
+    esp.Name = name or "KILLER_ESP"
+    esp.Adornee = target
+    esp.FillColor = color
+    esp.OutlineColor = Color3.new(1,1,1)
+    esp.FillTransparency = 0.5
     esp.Parent = target
     return esp
 end
 
--- Aimbot
-local function aimAt(target)
-    local character = target.Character
-    if character and character:FindFirstChild("HumanoidRootPart") then
-        LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(LocalPlayer.Character.HumanoidRootPart.Position, character.HumanoidRootPart.Position)
+-- ESP FOR KILLERS, WEAPONS, HEALTH
+for _, npc in ipairs(workspace:GetChildren()) do
+    if npc.Name:find("Killer") or npc.Name:find("Zombie") then
+        createESP(npc, Color3.new(1,0,0), "KILLER_ESP") -- RED = KILLER
+    elseif npc.Name:find("Gun") or npc.Name:find("Weapon") then
+        createESP(npc, Color3.new(0,1,0), "WEAPON_ESP") -- GREEN = WEAPON
+    elseif npc.Name:find("Health") or npc.Name:find("Medkit") then
+        createESP(npc, Color3.new(0,0,1), "HEALTH_ESP") -- BLUE = HEALTH
     end
 end
 
--- Noclip
-local noclipActive = false
+-- AUTO-AIM TOGGLE (PRESS F)
+local AUTO_AIM = false
+UIS.InputBegan:Connect(function(input)
+    if input.KeyCode == Enum.KeyCode.F then
+        AUTO_AIM = not AUTO_AIM
+    end
+end)
+
+RunService.Heartbeat:Connect(function()
+    if AUTO_AIM then
+        local closest, dist = nil, math.huge
+        for _, npc in ipairs(workspace:GetChildren()) do
+            if npc:FindFirstChild("KILLER_ESP") and npc:FindFirstChild("HumanoidRootPart") then
+                local d = (npc.HumanoidRootPart.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
+                if d < dist then
+                    closest = npc
+                    dist = d
+                end
+            end
+        end
+        if closest then
+            LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(LocalPlayer.Character.HumanoidRootPart.Position, closest.HumanoidRootPart.Position)
+        end
+    end
+end)
+
+-- AUTO-PICKUP WEAPONS AND HEALTH (HOLD E)
+UIS.InputBegan:Connect(function(input)
+    if input.KeyCode == Enum.KeyCode.E then
+        for _, obj in ipairs(workspace:GetChildren()) do
+            if obj:FindFirstChild("WEAPON_ESP") or obj:FindFirstChild("HEALTH_ESP") then
+                if obj:FindFirstChild("TouchInterest") then
+                    firetouchinterest(LocalPlayer.Character.HumanoidRootPart, obj, 0)
+                    firetouchinterest(LocalPlayer.Character.HumanoidRootPart, obj, 1)
+                end
+            end
+        end
+    end
+end)
+
+-- SPEED HACK (PRESS V) AND NOCLIP (PRESS B)
+local SPEED_MULTIPLIER = 1
+local NOCLIP = false
+
+UIS.InputBegan:Connect(function(input)
+    if input.KeyCode == Enum.KeyCode.V then
+        SPEED_MULTIPLIER = (SPEED_MULTIPLIER == 1) and 3 or 1
+    elseif input.KeyCode == Enum.KeyCode.B then
+        NOCLIP = not NOCLIP
+    end
+end)
+
 RunService.Stepped:Connect(function()
-    if noclipActive and LocalPlayer.Character then
+    -- SPEED
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+        LocalPlayer.Character.Humanoid.WalkSpeed = 16 * SPEED_MULTIPLIER
+    end
+    -- NOCLIP
+    if NOCLIP and LocalPlayer.Character then
         for _, part in ipairs(LocalPlayer.Character:GetDescendants()) do
             if part:IsA("BasePart") then
                 part.CanCollide = false
@@ -33,51 +112,22 @@ RunService.Stepped:Connect(function()
         end
     end
 end)
-
--- Auto Steal Weapons
-local function stealWeapon(weaponPart)
-    if weaponPart and weaponPart.Parent then
-        LocalPlayer.Character.HumanoidRootPart.CFrame = weaponPart.CFrame
-        wait(0.2)
-        firetouchinterest(LocalPlayer.Character.HumanoidRootPart, weaponPart, 0) -- Touch to collect
-    end
-end
-
--- GUI Toggle
-UserInputService.InputBegan:Connect(function(input)
-    if input.KeyCode == Enum.KeyCode.RightControl then
-        noclipActive = not noclipActive
-    elseif input.KeyCode == Enum.KeyCode.Q then
-        local closestTarget = nil
-        local maxDist = math.huge
-        for _, player in ipairs(Players:GetPlayers()) do
-            if player ~= LocalPlayer and player.Character then
-                local dist = (player.Character.HumanoidRootPart.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
-                if dist < maxDist then
-                    closestTarget = player
-                    maxDist = dist
-                end
+-- INFINITE AMMO (IF APPLICABLE)
+local function infiniteAmmo()
+    local old; old = hookmetamethod(game, "__namecall", function(self, ...)
+        if self.Name == "FireServer" and getnamecallmethod() == "FireServer" then
+            if tostring(self.Parent) == "Gun" then
+                return -- Block ammo consumption
             end
         end
-        if closestTarget then
-            aimAt(closestTarget)
-        end
-    end
-end)
-
--- Main Loop
-while wait(1) do
-    -- ESP for Players
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Character and not player.Character:FindFirstChild("ESP_" .. player.Name) then
-            createESP(player.Character)
-        end
-    end
-
-    -- Auto Steal Nearest Weapon
-    for _, weapon in ipairs(workspace:GetChildren()) do
-        if weapon.Name == "WeaponPart" and (weapon.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude < 50 then
-            stealWeapon(weapon)
-        end
+        return old(self, ...)
     end
 end
+infiniteAmmo()
+
+-- NOTIFY
+game.StarterGui:SetCore("SendNotification", {
+    Title = "BRUTAL CHEAT LOADED",
+    Text = "F: Auto-Aim | V: Speed | B: Noclip | E: Auto-Loot",
+    Duration = 10
+})
